@@ -20,7 +20,9 @@ defmodule LoggerBackends.SQL.MixProject do
   defp deps do
     [
       {:ecto_sql, "~> 3.12"},
-      {:logger_backends, "~> 1.0.0"}
+      {:ecto_sqlite3, "~> 0.17"},
+      {:logger_backends, "~> 1.0.0"},
+      {:jason, "~> 1.4"}
     ]
   end
 end

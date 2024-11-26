@@ -25,11 +25,14 @@ defmodule LoggerBackends.SQL do
       and it's a *compile-time* option. This means that if you want to change
       the table name, you need to change it in `config/config.exs` 
       and recompile the code.
+
+      * `:path` - the path to the SQLite database file. This option is only
+      used when the `:repo` option is not provided.
   """
 
   @behaviour :gen_event
 
-  defstruct level: nil, repo: nil, schema: LoggerBackends.SQL.Schema
+  defstruct level: nil, repo: nil, schema: LoggerBackends.SQL.Schema, path: nil
 
   @impl true
   def init(atom) when is_atom(atom) do
@@ -46,12 +49,22 @@ defmodule LoggerBackends.SQL do
     level = Keyword.get(config, :level)
     repo = Keyword.get(config, :repo)
     schema = Keyword.get(config, :schema, LoggerBackends.SQL.Schema)
+    path = Keyword.get(config, :path)
 
-    if schema == LoggerBackends.SQL.Schema do
-      LoggerBackends.SQL.Schema.create_table_if_needed(repo)
+    try do
+      {:ok, _pid} = if path && !repo, do: LoggerBackends.SQL.Repo.start(path), else: {:ok, nil}
+      repo = LoggerBackends.SQL.Repo
+
+      if schema == LoggerBackends.SQL.Schema do
+        LoggerBackends.SQL.Schema.create_table_if_needed(repo)
+      end
+
+      %{state | level: level, repo: repo, schema: schema}
+    rescue
+      e ->
+        IO.puts(:stderr, "error creating the database: #{inspect(e)}")
+        raise e
     end
-
-    %{state | level: level, repo: repo, schema: schema}
   end
 
   @impl true
