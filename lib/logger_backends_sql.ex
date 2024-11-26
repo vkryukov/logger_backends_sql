@@ -45,7 +45,7 @@ defmodule LoggerBackends.SQL do
   defp init(config, state) do
     level = Keyword.get(config, :level)
     repo = Keyword.get(config, :repo)
-    schema = Keyword.get(config, :schema)
+    schema = Keyword.get(config, :schema, LoggerBackends.SQL.Schema)
 
     if schema == LoggerBackends.SQL.Schema do
       LoggerBackends.SQL.Schema.create_table_if_needed(repo)
@@ -64,20 +64,18 @@ defmodule LoggerBackends.SQL do
     %{level: log_level, repo: repo, schema: schema} = state
 
     if meet_level?(level, log_level) do
-      # Convert message to string if it's not already
       message =
         case msg do
           msg when is_binary(msg) -> msg
           msg -> IO.iodata_to_binary(msg)
         end
 
-      # Extract timestamp components
       timestamp = to_utc_datetime(ts)
 
-      # Insert log entry into database
-      record = schema.changeset(%{time: timestamp, message: message, meta: md})
+      record =
+        schema.changeset(%{time: timestamp, message: message, meta: md |> serialize_metadata})
 
-      case repo.insert(record) do
+      case repo.insert(record, log: false) do
         {:ok, _} ->
           :ok
 
@@ -115,4 +113,25 @@ defmodule LoggerBackends.SQL do
     {:ok, naive} = NaiveDateTime.new(year, month, day, hour, minute, second, millisecond)
     DateTime.from_naive!(naive, "Etc/UTC")
   end
+
+  defp serialize_metadata(metadata) do
+    metadata
+    |> Enum.map(fn {key, value} -> {key, serialize_value(value)} end)
+    |> Enum.into(%{})
+  end
+
+  defp serialize_value(value) when is_pid(value), do: inspect(value)
+  defp serialize_value(value) when is_port(value), do: inspect(value)
+  defp serialize_value(value) when is_reference(value), do: inspect(value)
+  defp serialize_value(value) when is_function(value), do: inspect(value)
+  defp serialize_value(value) when is_atom(value), do: to_string(value)
+  defp serialize_value(value) when is_list(value), do: Enum.map(value, &serialize_value/1)
+
+  defp serialize_value(value) when is_tuple(value),
+    do: value |> Tuple.to_list() |> Enum.map(&serialize_value/1)
+
+  defp serialize_value(value) when is_map(value),
+    do: Map.new(value, fn {k, v} -> {k, serialize_value(v)} end)
+
+  defp serialize_value(value), do: value
 end

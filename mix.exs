@@ -1,4 +1,4 @@
-defmodule LoggerBackendSql.MixProject do
+defmodule LoggerBackends.SQL.MixProject do
   use Mix.Project
 
   def project do
