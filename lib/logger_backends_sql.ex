@@ -59,7 +59,7 @@ defmodule LoggerBackends.SQL do
         LoggerBackends.SQL.Schema.create_table_if_needed(repo)
       end
 
-      %{state | level: level, repo: repo, schema: schema}
+      %{state | level: level, repo: repo, schema: schema, path: path}
     rescue
       e ->
         IO.puts(:stderr, "error creating the database: #{inspect(e)}")
