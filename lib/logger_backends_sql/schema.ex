@@ -24,34 +24,36 @@ defmodule LoggerBackends.SQL.Schema do
   Works with both PostgreSQL and SQLite.
   """
   def create_table_if_needed(repo) do
-    table_exists? = repo.__adapter__.exists?(repo, :table, @table_name)
+    adapter = repo.__adapter__()
 
-    unless table_exists? do
-      # Get the database type to use appropriate SQL
-      adapter = repo.__adapter__()
+    migration =
+      case adapter do
+        Ecto.Adapters.Postgres ->
+          """
+          CREATE TABLE IF NOT EXISTS #{@table_name} (
+            time TIMESTAMPTZ NOT NULL,
+            message TEXT NOT NULL,
+            meta JSONB
+          )
+          """
 
-      migration =
-        case adapter do
-          Ecto.Adapters.Postgres ->
-            """
-            CREATE TABLE IF NOT EXISTS #{@table_name} (
-              time TIMESTAMPTZ NOT NULL,
-              message TEXT NOT NULL,
-              meta JSONB
-            )
-            """
+        Ecto.Adapters.SQLite3 ->
+          """
+          CREATE TABLE IF NOT EXISTS #{@table_name} (
+            time DATETIME NOT NULL,
+            message TEXT NOT NULL,
+            meta TEXT CHECK (json_valid(meta) OR meta IS NULL)
+          )
+          """
+      end
 
-          Ecto.Adapters.SQLite3 ->
-            """
-            CREATE TABLE IF NOT EXISTS #{@table_name} (
-              time DATETIME NOT NULL,
-              message TEXT NOT NULL,
-              meta TEXT CHECK (json_valid(meta) OR meta IS NULL)
-            )
-            """
-        end
-
-      {:ok, _result} = repo.query(migration, [])
+    try do
+      {status, result} = repo.query(migration, [], log: false)
+      IO.puts("Created successfully: status=#{inspect(status)} result=#{inspect(result)}")
+    rescue
+      e ->
+        IO.puts(:strderr, "error while creating the logs table: #{inspect(e)}")
+        raise e
     end
 
     :ok
