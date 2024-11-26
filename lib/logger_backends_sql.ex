@@ -46,6 +46,11 @@ defmodule LoggerBackends.SQL do
     level = Keyword.get(config, :level)
     repo = Keyword.get(config, :repo)
     schema = Keyword.get(config, :schema)
+
+    if schema == LoggerBackends.SQL.Schema do
+      LoggerBackends.SQL.Schema.create_table_if_needed(repo)
+    end
+
     %{state | level: level, repo: repo, schema: schema}
   end
 
