@@ -48,8 +48,7 @@ defmodule LoggerBackends.SQL.Schema do
       end
 
     try do
-      {status, result} = repo.query(migration, [], log: false)
-      IO.puts("Created successfully: status=#{inspect(status)} result=#{inspect(result)}")
+      {:ok, _result} = repo.query(migration, [], log: false)
     rescue
       e ->
         IO.puts(:strderr, "error while creating the logs table: #{inspect(e)}")
