@@ -49,6 +49,7 @@ defmodule LoggerBackends.SQL do
     level = Keyword.get(config, :level)
     repo = Keyword.get(config, :repo)
     schema = Keyword.get(config, :schema, LoggerBackends.SQL.Schema)
+
     path = Keyword.get(config, :path)
 
     try do
@@ -110,9 +111,15 @@ defmodule LoggerBackends.SQL do
     {:ok, :ok, configure(options, state)}
   end
 
-  defp configure(options, state) do
+  def configure(options) do
     config = Keyword.merge(Application.get_env(:logger, __MODULE__, []), options)
     Application.put_env(:logger, __MODULE__, config)
+    config
+  end
+
+  defp configure(options, state) do
+    IO.puts("configuring SQL logger with options = #{inspect(options)}")
+    config = configure(options)
     init(config, state)
   end
 
