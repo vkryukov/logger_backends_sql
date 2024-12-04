@@ -15,7 +15,7 @@ defmodule Mix.Tasks.LoggerBackendsSql.Gen.Migration do
     |> File.read!()
     |> String.replace(
       "LoggerBackends.SQL.Migrations.CreateLogsTable",
-      "#{Mix.Project.get().project()[:app]}.Repo.Migrations.CreateLogsTable"
+      "#{Mix.Project.get().project()[:app] |> String.upcase()}.Repo.Migrations.CreateLogsTable"
     )
     |> then(&Mix.Generator.create_file(target_path, &1))
 
