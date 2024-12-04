@@ -115,14 +115,9 @@ defmodule LoggerBackends.SQL do
     {:ok, :ok, configure(options, state)}
   end
 
-  def configure(options) do
+  defp configure(options, state) do
     config = Keyword.merge(Application.get_env(:logger, __MODULE__, []), options)
     Application.put_env(:logger, __MODULE__, config)
-    config
-  end
-
-  defp configure(options, state) do
-    config = configure(options)
     init(config, state)
   end
 
