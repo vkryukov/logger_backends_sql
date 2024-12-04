@@ -13,36 +13,31 @@ defmodule LoggerBackends.SQL do
 
       * `:schema` - the Ecto schema to be used. This schema should
       have a changeset function that accepts a map with keys `:time`,
-      `:message`, and `:meta`. If not provided, the default schema
-      in `LoggerBackends.SQL.Schema` will be used.
-
-      * `:table_name` - the table to be used to store the logs 
-      for the default schema. It *must* have columns `time`, `message`,
-      and `meta`, which are of types `utc_datetime_usec`, `string`, and
-      `map`, respectively. If the table doesn't exist, it will be created.
-
-      Note that the `:table_name` option is only used for the default schema,
-      and it's a *compile-time* option. This means that if you want to change
-      the table name, you need to change it in `config/config.exs` 
-      and recompile the code.
-
-      * `:path` - the path to the SQLite database file. This option is only
-      used when the `:repo` option is not provided.
+      `:message`, and `:metadata`. If it's not provided, the default
+      schema LoggerBackends.SQL.Schema is used.
   """
 
   @behaviour :gen_event
 
-  defstruct level: nil, repo: nil, schema: LoggerBackends.SQL.Schema, path: nil
+  defstruct level: nil, repo: nil, schema: nil
 
   @impl true
   def init(atom) when is_atom(atom) do
     config = Application.get_env(:logger, __MODULE__, [])
-    {:ok, init(config, %__MODULE__{})}
+
+    case init(config, %__MODULE__{}) do
+      {:error, reason} -> {:error, reason}
+      state -> {:ok, state}
+    end
   end
 
   def init({__MODULE__, opts}) when is_list(opts) do
     config = Keyword.merge(Application.get_env(:logger, __MODULE__, []), opts)
-    {:ok, init(config, %__MODULE__{})}
+
+    case init(config, %__MODULE__{}) do
+      {:error, reason} -> {:error, reason}
+      state -> {:ok, state}
+    end
   end
 
   defp init(config, state) do
@@ -50,21 +45,18 @@ defmodule LoggerBackends.SQL do
     repo = Keyword.get(config, :repo)
     schema = Keyword.get(config, :schema, LoggerBackends.SQL.Schema)
 
-    path = Keyword.get(config, :path)
+    cond do
+      !repo ->
+        {:error, "no repo configured"}
 
-    try do
-      {:ok, _pid} = if path && !repo, do: LoggerBackends.SQL.Repo.start(path), else: {:ok, nil}
-      repo = LoggerBackends.SQL.Repo
+      !schema ->
+        {:error, "no schema configured"}
 
-      if schema == LoggerBackends.SQL.Schema do
-        LoggerBackends.SQL.Schema.create_table_if_needed(repo)
-      end
+      # {:error, reason} = repo.aggregate(schema, :count) ->
+      #   {:error, "incorrect repo or schema is down: #{inspect(reason)}"}
 
-      %{state | level: level, repo: repo, schema: schema, path: path}
-    rescue
-      e ->
-        IO.puts(:stderr, "error creating the database: #{inspect(e)}")
-        raise e
+      true ->
+        %{state | level: level, repo: repo, schema: schema}
     end
   end
 
@@ -86,15 +78,27 @@ defmodule LoggerBackends.SQL do
 
       timestamp = to_utc_datetime(ts)
 
-      record =
-        schema.changeset(%{time: timestamp, message: message, meta: md |> serialize_metadata})
+      try do
+        record =
+          schema.changeset(%{
+            time: timestamp,
+            message: message,
+            metadata: md |> serialize_metadata,
+            level: Atom.to_string(level)
+          })
 
-      case repo.insert(record, log: false) do
-        {:ok, _} ->
-          :ok
+        result = repo.insert(record, log: false)
 
-        {:error, changeset} ->
-          IO.puts(:stderr, "Error inserting log entry: #{inspect(changeset.errors)}")
+        case result do
+          {:ok, _} ->
+            :ok
+
+          {:error, changeset} ->
+            IO.puts(:stderr, "Error inserting log entry: #{inspect(changeset.errors)}")
+        end
+      rescue
+        e ->
+          IO.puts(:stderr, "Error inserting log entry: #{inspect(e)}")
       end
     end
 
@@ -118,7 +122,6 @@ defmodule LoggerBackends.SQL do
   end
 
   defp configure(options, state) do
-    IO.puts("configuring SQL logger with options = #{inspect(options)}")
     config = configure(options)
     init(config, state)
   end

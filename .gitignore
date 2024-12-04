@@ -24,3 +24,4 @@ logger_backend_sql-*.tar
 
 # Temporary files, for example, from tests.
 /tmp/
+test.sqlite*
