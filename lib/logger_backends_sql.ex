@@ -5,16 +5,16 @@ defmodule LoggerBackends.SQL do
 
   ## Options
 
-      * `:level` - the level to be logged by this backend.
-      Note that messages are filtered by the general
-      `:level` configuration for the `:logger` application first.
+  * `:level` - the level to be logged by this backend.
+  Note that messages are filtered by the general
+  `:level` configuration for the `:logger` application first.
 
-      * `:repo` - the Ecto repo to be used to store the logs.
+  * `:repo` - the Ecto repo to be used to store the logs.
 
-      * `:schema` - the Ecto schema to be used. This schema should
-      have a changeset function that accepts a map with keys `:time`,
-      `:message`, and `:metadata`. If it's not provided, the default
-      schema LoggerBackends.SQL.Schema is used.
+  * `:schema` - the Ecto schema to be used. This schema should
+  have a changeset function that accepts a map with keys `:time`,
+  `:message`, and `:metadata`. If it's not provided, the default
+  schema LoggerBackends.SQL.Schema is used.
   """
 
   @behaviour :gen_event
