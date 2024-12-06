@@ -46,4 +46,24 @@ defmodule LoggerBackend.SQLTest do
              {"warn", "warning log"}
            ]
   end
+
+  test "able to log structs in metadata" do
+    defmodule A do
+      defstruct [:a]
+
+      def new(a), do: %A{a: a}
+    end
+
+    [{_id, pid, :worker, [LoggerBackends.Watcher]}] =
+      Supervisor.which_children(LoggerBackends.Supervisor)
+      |> Enum.filter(fn {id, _, _, _} -> id == LoggerBackends.SQL end)
+
+    ref = Process.monitor(pid)
+
+    a = A.new(1)
+
+    Logger.info("info log", a: a, a_map: %{a: a}, a_list: [a])
+
+    refute_receive {:DOWN, ^ref, :process, ^pid, _reason}, 500
+  end
 end
