@@ -94,11 +94,11 @@ defmodule LoggerBackends.SQL do
             :ok
 
           {:error, changeset} ->
-            IO.puts(:stderr, "Error inserting log entry: #{inspect(changeset.errors)}")
+            raise "Error inserting log entry: #{inspect(changeset.errors)}"
         end
       rescue
         e ->
-          IO.puts(:stderr, "Error inserting log entry: #{inspect(e)}")
+          raise e
       end
     end
 
