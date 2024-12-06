@@ -145,6 +145,9 @@ defmodule LoggerBackends.SQL do
   defp serialize_value(value) when is_atom(value), do: to_string(value)
   defp serialize_value(value) when is_list(value), do: Enum.map(value, &serialize_value/1)
 
+  defp serialize_value(value) when is_struct(value),
+    do: value |> Map.from_struct() |> serialize_value()
+
   defp serialize_value(value) when is_tuple(value),
     do: value |> Tuple.to_list() |> Enum.map(&serialize_value/1)
 
